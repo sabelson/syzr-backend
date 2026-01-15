@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syzr - Returns Intelligence Platform</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Mock data (replace with real API calls later)
+        const mockInsights = [
+            {
+                id: 1,
+                title: "SLIM-DNM-001 size 32x30: Thigh measurement 0.75\" too narrow",
+                category: "fit",
+                impact: "critical",
+                confidence: 96,
+                financialImpact: 14850,
+                description: "Size 32x30 returning at 42% (4.2x your baseline). 34 of 37 returns cite 'too tight in thighs'. Analysis shows thigh measurement is 0.75\" narrower than industry standard.",
+                affectedSKUs: ["SLIM-DNM-001"],
+                specificFitIssue: "Thigh circumference: Current 22.5\" → Should be 23.25\" minimum",
+                action: "DESIGN ACTION: Expand thigh measurement by 0.75\" on size 32x30. Copy thigh specs from SLIM-DNM-003 pattern.",
+                manufacturingNote: "Talk to factory about mid-season adjustment",
+                status: "open",
+                ordersAffected: 89,
+                returnsCount: 37
+            },
+            {
+                id: 2,
+                title: "STRCH-SEL-004/006/008: Fabric loses elasticity after first wash",
+                category: "quality",
+                impact: "critical",
+                confidence: 91,
+                financialImpact: 11240,
+                description: "Stretch Selvedge collection shows 31% return rate. 43 of 48 returns mention 'stretched out' or 'lost shape'. This is a fabric recovery issue.",
+                affectedSKUs: ["STRCH-SEL-004", "STRCH-SEL-006"],
+                specificFitIssue: "Fabric elastane recovery rate failing. Likely <85% recovery vs 92%+ standard",
+                action: "SOURCING ACTION: Contact mill re: lot #KH-2409. Test elastane percentage.",
+                manufacturingNote: "Compare to SS23 batch (0 complaints)",
+                status: "open",
+                ordersAffected: 156,
+                returnsCount: 48
+            },
+            {
+                id: 3,
+                title: "SLIM-BLK-001: Perfect fit profile — scale this pattern",
+                category: "success",
+                impact: "positive",
+                confidence: 94,
+                financialImpact: 0,
+                description: "Black slim-fit has 6.2% return rate vs 24% across other SKUs. This is your gold standard.",
+                affectedSKUs: ["SLIM-BLK-001"],
+                specificFitIssue: "No issues — this is the benchmark",
+                action: "MERCHANDISING ACTION: Increase black denim inventory by 40%. Use fit specs as template.",
+                manufacturingNote: "Document pattern specs as reference",
+                status: "open",
+                ordersAffected: 203,
+                returnsCount: 12
+            }
+        ];
+
+        const mockMetrics = {
+            totalOrders: 2847,
+            totalReturns: 412,
+            returnRate: 14.5,
+            potentialSavings: 24610,
+            trendsLastWeek: -2.3
+        };
+
+        function SyzrApp() {
+            const [selectedInsight, setSelectedInsight] = useState(null);
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [insights] = useState(mockInsights);
+            const [metrics] = useState(mockMetrics);
+
+            const filteredInsights = filterStatus === 'all' 
+                ? insights 
+                : insights.filter(i => i.status === filterStatus);
+
+            const getImpactColor = (impact) => {
+                switch(impact) {
+                    case 'critical': return '#ef4444';
+                    case 'high': return '#fb923c';
+                    case 'medium': return '#eab308';
+                    case 'positive': return '#22c55e';
+                    default: return '#94a3b8';
+                }
+            };
+
+            const getStatusBadge = (status) => {
+                const badges = {
+                    open: { text: 'Open', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+                    investigating: { text: 'Investigating', color: '#fb923c', bg: 'rgba(251, 146, 60, 0.1)' },
+                    addressed: { text: 'Addressed', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' }
+                };
+                return badges[status] || badges.open;
+            };
+
+            return (
+                <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+                    {/* Animated background */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '10%',
+                        right: '15%',
+                        width: '600px',
+                        height: '600px',
+                        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+                        borderRadius: '50%',
+                        filter: 'blur(60px)',
+                        pointerEvents: 'none'
+                    }} />
+
+                    {/* Header */}
+                    <header style={{
+                        padding: '2rem 3rem',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(20px)',
+                        background: 'rgba(15, 15, 26, 0.7)',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 100
+                    }}>
+                        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                ⚡
+                            </div>
+                            <div>
+                                <h1 style={{
+                                    fontFamily: 'monospace',
+                                    fontSize: '2rem',
+                                    fontWeight: 700,
+                                    margin: 0,
+                                    background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent'
+                                }}>SYZR</h1>
+                                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6366f1', fontWeight: 600 }}>
+                                    Fit intelligence that tells you exactly what's wrong and how to fix it
+                                </p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '3rem', position: 'relative', zIndex: 1 }}>
+                        {/* Metrics */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                            gap: '1.5rem',
+                            marginBottom: '3rem'
+                        }}>
+                            {[
+                                { label: 'Return Rate', value: `${metrics.returnRate}%`, color: '#6366f1', trend: `↓ ${Math.abs(metrics.trendsLastWeek)}% vs last week` },
+                                { label: 'Potential Savings', value: `$${metrics.potentialSavings.toLocaleString()}`, color: '#ec4899', trend: 'if top 3 issues fixed' },
+                                { label: 'Active Insights', value: insights.filter(i => i.status === 'open').length, color: '#22c55e', trend: 'requiring action' },
+                                { label: 'Total Orders', value: metrics.totalOrders.toLocaleString(), color: '#fb923c', trend: 'last 30 days' }
+                            ].map((metric, i) => (
+                                <div key={i} style={{
+                                    background: `linear-gradient(135deg, ${metric.color}20 0%, ${metric.color}10 100%)`,
+                                    border: `1px solid ${metric.color}40`,
+                                    borderRadius: '16px',
+                                    padding: '1.75rem'
+                                }}>
+                                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
+                                        {metric.label}
+                                    </p>
+                                    <h2 style={{ margin: '0.5rem 0 0 0', fontSize: '2.5rem', fontWeight: 700, color: '#fff' }}>
+                                        {metric.value}
+                                    </h2>
+                                    <div style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.5rem' }}>
+                                        {metric.trend}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Filter Bar */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '2rem',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '12px',
+                            padding: '1rem 1.5rem'
+                        }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#fff' }}>
+                                Priority Insights
+                            </h3>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {['all', 'open', 'investigating', 'addressed'].map(status => (
+                                    <button
+                                        key={status}
+                                        onClick={() => setFilterStatus(status)}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            background: filterStatus === status ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                            border: filterStatus === status ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '8px',
+                                            color: filterStatus === status ? '#a5b4fc' : 'rgba(255, 255, 255, 0.6)',
+                                            fontSize: '0.875rem',
+                                            cursor: 'pointer',
+                                            textTransform: 'capitalize'
+                                        }}
+                                    >
+                                        {status}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Insights Feed */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {filteredInsights.map((insight) => {
+                                const statusBadge = getStatusBadge(insight.status);
+                                return (
+                                    <div
+                                        key={insight.id}
+                                        onClick={() => setSelectedInsight(insight)}
+                                        style={{
+                                            background: 'rgba(255, 255, 255, 0.03)',
+                                            border: `1px solid ${getImpactColor(insight.impact)}40`,
+                                            borderRadius: '16px',
+                                            padding: '1.75rem',
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            borderLeft: `4px solid ${getImpactColor(insight.impact)}`
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
+                                                    <span style={{
+                                                        padding: '0.25rem 0.75rem',
+                                                        background: statusBadge.bg,
+                                                        color: statusBadge.color,
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {statusBadge.text}
+                                                    </span>
+                                                    <span style={{
+                                                        padding: '0.25rem 0.75rem',
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {insight.confidence}% confidence
+                                                    </span>
+                                                </div>
+                                                <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 600, color: '#fff' }}>
+                                                    {insight.title}
+                                                </h4>
+                                                <p style={{ margin: '0 0 1rem 0', color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.938rem' }}>
+                                                    {insight.description}
+                                                </p>
+                                                <div style={{
+                                                    padding: '0.75rem',
+                                                    background: 'rgba(99, 102, 241, 0.08)',
+                                                    borderRadius: '8px',
+                                                    fontSize: '0.875rem',
+                                                    color: '#a5b4fc'
+                                                }}>
+                                                    ⚡ Recommended: {insight.action}
+                                                </div>
+                                            </div>
+                                            <div style={{ minWidth: '180px', textAlign: 'right' }}>
+                                                {insight.financialImpact > 0 && (
+                                                    <div>
+                                                        <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                                                            Financial Impact
+                                                        </p>
+                                                        <p style={{ fontSize: '1.75rem', fontWeight: 700, color: getImpactColor(insight.impact) }}>
+                                                            ${insight.financialImpact.toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem', fontSize: '0.875rem' }}>
+                                                    <div>
+                                                        <div style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Orders</div>
+                                                        <div style={{ fontWeight: 600 }}>{insight.ordersAffected}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Returns</div>
+                                                        <div style={{ fontWeight: 600 }}>{insight.returnsCount}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+
+                    {/* Modal */}
+                    {selectedInsight && (
+                        <div
+                            onClick={() => setSelectedInsight(null)}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0, 0, 0, 0.85)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1000,
+                                padding: '2rem'
+                            }}
+                        >
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '20px',
+                                    maxWidth: '800px',
+                                    width: '100%',
+                                    maxHeight: '90vh',
+                                    overflow: 'auto',
+                                    padding: '2.5rem',
+                                    position: 'relative'
+                                }}
+                            >
+                                <button
+                                    onClick={() => setSelectedInsight(null)}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '1.5rem',
+                                        right: '1.5rem',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        padding: '0.5rem',
+                                        fontSize: '1.5rem'
+                                    }}
+                                >
+                                    ×
+                                </button>
+
+                                <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+                                    {selectedInsight.title}
+                                </h2>
+
+                                <div style={{
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '12px',
+                                    padding: '1.5rem',
+                                    marginBottom: '1.5rem'
+                                }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#fff' }}>Analysis</h3>
+                                    <p style={{ color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.7 }}>
+                                        {selectedInsight.description}
+                                    </p>
+                                </div>
+
+                                {selectedInsight.specificFitIssue && !selectedInsight.specificFitIssue.includes('No issues') && (
+                                    <div style={{
+                                        background: 'rgba(255, 255, 255, 0.03)',
+                                        borderRadius: '12px',
+                                        padding: '1.5rem',
+                                        marginBottom: '1.5rem'
+                                    }}>
+                                        <h3 style={{ fontSize: '0.875rem', marginBottom: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                                            ⚠️ Specific Fit Issue
+                                        </h3>
+                                        <p style={{ color: '#22c55e', fontWeight: 600, fontFamily: 'monospace' }}>
+                                            {selectedInsight.specificFitIssue}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div style={{
+                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%)',
+                                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                                    borderRadius: '12px',
+                                    padding: '1.5rem'
+                                }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Recommended Action</h3>
+                                    <p style={{ color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.6 }}>
+                                        {selectedInsight.action}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SyzrApp />);
+    </script>
+</body>
+</html>
